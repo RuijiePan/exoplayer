@@ -1,5 +1,6 @@
 package com.panruijie.exoplayer.base
 
+import com.google.android.exoplayer2.upstream.DataSource
 import com.panruijie.exoplayer.source.MediaInfo
 
 /**
@@ -57,6 +58,7 @@ interface IExoPlayer : IPlayer {
      * 第一帧刷出来的时候跑的任务
      */
     fun runOnRenderFirstFrame(runnable: Runnable)
+
     /**
      * 生命周期回调
      */

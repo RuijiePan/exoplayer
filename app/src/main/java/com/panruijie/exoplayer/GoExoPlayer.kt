@@ -26,7 +26,11 @@ import com.google.android.exoplayer2.source.smoothstreaming.SsMediaSource
 import com.google.android.exoplayer2.trackselection.AdaptiveTrackSelection
 import com.google.android.exoplayer2.trackselection.DefaultTrackSelector
 import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory
+import com.google.android.exoplayer2.upstream.TransferListener
 import com.google.android.exoplayer2.util.Util
+import com.panruijie.exoplayer.cache.Cache
+import com.panruijie.exoplayer.cache.CacheBuilder
+import com.panruijie.exoplayer.cache.DataSourceFactoryProvider
 import java.util.ArrayList
 import java.util.concurrent.CopyOnWriteArrayList
 import com.panruijie.exoplayer.util.StateStore
@@ -79,7 +83,7 @@ class GoExoPlayer(private val context: Context) : IExoPlayer, AnalyticsListener 
     /**
      * 是否等待刷新了画面帧之后再刷新下一帧
      */
-    private var isSeekableAfterFrameRenderer = true
+    private var isSeekableAfterFrameRenderer = false
     var buildClipSource = true
     private var exoPlayer: SimpleExoPlayer? = null
     private var playbackParameters: PlaybackParameters = PlaybackParameters.DEFAULT
@@ -132,6 +136,8 @@ class GoExoPlayer(private val context: Context) : IExoPlayer, AnalyticsListener 
                 it.onPlayPosition(pos)
             }
         }
+
+        DataSourceFactoryProvider.setProviderType(DataSourceFactoryProvider.ProviderType.OKHTTP)
     }
 
     /**
@@ -184,7 +190,7 @@ class GoExoPlayer(private val context: Context) : IExoPlayer, AnalyticsListener 
     }
 
     private fun buildMediaSource(info: MediaInfo): MediaSource {
-        val dataSourceFactory = DefaultDataSourceFactory(context, Util.getUserAgent(context, context.getPackageName()))
+        val dataSourceFactory = DataSourceFactoryProvider.provider.create(context, Util.getUserAgent(context, context.getPackageName()), null)
         val uri: Uri?
         if (info.rawId != null) {
             uri = UriParseUtil.rawResourceIdToUri(context, info.rawId)!!
