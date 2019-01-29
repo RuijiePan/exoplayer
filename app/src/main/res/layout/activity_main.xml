@@ -24,6 +24,14 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content" />
 
+        <ImageView
+                android:id="@+id/playButton"
+                android:visibility="visible"
+                android:layout_gravity="center"
+                android:layout_width="100dp"
+                android:layout_height="100dp"
+                android:src="@drawable/ic_pause_circle_outline_black_24dp"/>
+
         <android.support.v7.widget.AppCompatSeekBar
                 android:id="@+id/progressSeekBar"
                 android:layout_gravity="bottom"

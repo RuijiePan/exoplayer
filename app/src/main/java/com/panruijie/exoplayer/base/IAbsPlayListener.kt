@@ -9,6 +9,10 @@ import com.google.android.exoplayer2.analytics.AnalyticsListener
  **/
 class IAbsPlayListener : IPlayListener {
 
+    override fun onSeekComoleted(eventTime: AnalyticsListener.EventTime?, playWhenReady: Boolean) {
+
+    }
+
     override fun onBufferingUpdate(percent: Int?) {
 
     }
@@ -50,10 +54,6 @@ class IAbsPlayListener : IPlayListener {
     }
 
     override fun onSeekProcessed(eventTime: AnalyticsListener.EventTime?) {
-        
-    }
-
-    override fun onSeekComoleted(eventTime: AnalyticsListener.EventTime?) {
         
     }
 

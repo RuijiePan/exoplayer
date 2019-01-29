@@ -35,6 +35,7 @@ import java.util.ArrayList
 import java.util.concurrent.CopyOnWriteArrayList
 import com.panruijie.exoplayer.util.StateStore
 import com.panruijie.exoplayer.util.TextureViewHelper
+import java.io.IOException
 import java.util.concurrent.LinkedBlockingQueue
 
 
@@ -83,7 +84,7 @@ class GoExoPlayer(private val context: Context) : IExoPlayer, AnalyticsListener 
     /**
      * 是否等待刷新了画面帧之后再刷新下一帧
      */
-    private var isSeekableAfterFrameRenderer = false
+    private var isSeekableAfterFrameRenderer = true
     var buildClipSource = true
     private var exoPlayer: SimpleExoPlayer? = null
     private var playbackParameters: PlaybackParameters = PlaybackParameters.DEFAULT
@@ -101,7 +102,7 @@ class GoExoPlayer(private val context: Context) : IExoPlayer, AnalyticsListener 
         val WAKE_LOCK_TIMEOUT = 1000L
         val BUFFER_REPEAT_DELAY = 1000
 
-        val PLAY_REPEATER_TIME = 16
+        val PLAY_REPEATER_TIME = 1000
         val IDLE_SEEK_POS = -1L
         val ANDROID_M = 23
     }
@@ -247,7 +248,6 @@ class GoExoPlayer(private val context: Context) : IExoPlayer, AnalyticsListener 
             concatenatedSource.addMediaSources(buildMediaSource(mediaInfoList))
         }
 
-
         exoPlayer?.prepare(concatenatedSource)
     }
 
@@ -372,7 +372,7 @@ class GoExoPlayer(private val context: Context) : IExoPlayer, AnalyticsListener 
             pendSeekPos = IDLE_SEEK_POS
             stateStore.setMostRecentState(stateStore.isLastReportedPlayWhenReady(), StateStore.FLAG_PLAY_WHEN_READY)
             playListenerList.forEach {
-                it.onSeekComoleted(null)
+                it.onSeekComoleted(null, exoPlayer?.playWhenReady?: playWhenReady)
             }
             return
         }
@@ -640,7 +640,7 @@ class GoExoPlayer(private val context: Context) : IExoPlayer, AnalyticsListener 
 
             if (informSeekCompletion) {
                 playListenerList.forEach {
-                    it.onSeekComoleted(eventTime)
+                    it.onSeekComoleted(eventTime, playWhenReady)
                 }
                 //继续下次seekto
                 if (pendSeekPos != IDLE_SEEK_POS) {
@@ -725,17 +725,29 @@ class GoExoPlayer(private val context: Context) : IExoPlayer, AnalyticsListener 
     //这个是加载网络的时候的状态，片段加载，会start->completed->start这样轮询
     override fun onLoadStarted(eventTime: AnalyticsListener.EventTime?, loadEventInfo: MediaSourceEventListener.LoadEventInfo?, mediaLoadData: MediaSourceEventListener.MediaLoadData?) {
         super.onLoadStarted(eventTime, loadEventInfo, mediaLoadData)
-        //Log.w(TAG, "onLoadStarted")
+        Log.w(TAG, "onLoadStarted")
     }
 
     override fun onLoadCompleted(eventTime: AnalyticsListener.EventTime?, loadEventInfo: MediaSourceEventListener.LoadEventInfo?, mediaLoadData: MediaSourceEventListener.MediaLoadData?) {
         super.onLoadCompleted(eventTime, loadEventInfo, mediaLoadData)
-        //Log.w(TAG, "onLoadCompleted")
+        Log.w(TAG, "onLoadCompleted")
     }
 
     override fun onLoadingChanged(eventTime: AnalyticsListener.EventTime?, isLoading: Boolean) {
         super.onLoadingChanged(eventTime, isLoading)
-        //Log.w(TAG, "onLoadingChanged = " + isLoading)
+        Log.w(TAG, "onLoadingChanged = " + isLoading)
+    }
+
+    override fun onLoadError(
+        eventTime: AnalyticsListener.EventTime?,
+        loadEventInfo: MediaSourceEventListener.LoadEventInfo?,
+        mediaLoadData: MediaSourceEventListener.MediaLoadData?,
+        error: IOException?,
+        wasCanceled: Boolean
+    ) {
+        super.onLoadError(eventTime, loadEventInfo, mediaLoadData, error, wasCanceled)
+        Log.w(TAG, "onLoadError: wasCacneled = ${wasCanceled}, error = ${error?.message.toString()}" )
+        error?.printStackTrace()
     }
 }
 

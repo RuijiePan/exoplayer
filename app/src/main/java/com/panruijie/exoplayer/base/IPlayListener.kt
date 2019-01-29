@@ -40,7 +40,7 @@ interface IPlayListener {
     /**
      * exoplayer seekto完成，画面已经刷新的时候，
      */
-    fun onSeekComoleted(eventTime: AnalyticsListener.EventTime?)
+    fun onSeekComoleted(eventTime: AnalyticsListener.EventTime?, playWhenReady: Boolean)
 
     fun onVideoSizeChanged(eventTime : AnalyticsListener.EventTime?, width : Int, height : Int,
                            unappliedRotationDegrees : Int, pixelWidthHeightRatio : Float)

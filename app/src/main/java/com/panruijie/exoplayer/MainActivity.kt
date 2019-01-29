@@ -11,6 +11,8 @@ import android.util.Log
 import android.view.Surface
 import android.view.TextureView
 import android.view.View
+import android.widget.ImageButton
+import android.widget.ImageView
 import android.widget.ProgressBar
 import android.widget.SeekBar
 
@@ -24,7 +26,7 @@ import com.google.android.exoplayer2.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
 import com.panruijie.exoplayer.R
 import kotlinx.android.synthetic.main.activity_main.*
 
-class MainActivity : AppCompatActivity(), IPlayListener, SeekBar.OnSeekBarChangeListener {
+class MainActivity : AppCompatActivity(), IPlayListener, SeekBar.OnSeekBarChangeListener, View.OnClickListener {
 
     companion object {
         private val REQUEST_EXTERNAL_STORAGE = 1
@@ -37,6 +39,7 @@ class MainActivity : AppCompatActivity(), IPlayListener, SeekBar.OnSeekBarChange
     private lateinit var goExoPlayer: GoExoPlayer
     private lateinit var progressBar: AppCompatSeekBar
     private lateinit var loadingProgress: ProgressBar
+    private lateinit var playButton : ImageView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -45,10 +48,17 @@ class MainActivity : AppCompatActivity(), IPlayListener, SeekBar.OnSeekBarChange
         textureView = findViewById(R.id.textureView)
         progressBar = findViewById(R.id.progressSeekBar)
         loadingProgress = findViewById(R.id.loadingProgress)
+        playButton = findViewById(R.id.playButton)
 
         aspectRatioFrameLayout.resizeMode = RESIZE_MODE_FIT
         aspectRatioFrameLayout.setAspectRatio(1f)
 
+        requestPermission()
+        initPlayer()
+        setListener()
+    }
+
+    private fun requestPermission() {
         if (Build.VERSION.SDK_INT > Build.VERSION_CODES.LOLLIPOP) {
             if (ActivityCompat.checkSelfPermission(
                     this,
@@ -58,17 +68,34 @@ class MainActivity : AppCompatActivity(), IPlayListener, SeekBar.OnSeekBarChange
                 ActivityCompat.requestPermissions(this, PERMISSIONS_STORAGE, REQUEST_EXTERNAL_STORAGE)
             }
         }
+    }
 
+    private fun initPlayer() {
         goExoPlayer = GoExoPlayer(this)
         //https://commondatastorage.googleapis.com/gtv-videos-bucket/CastVideos/hls/TearsOfSteel.m3u8
         //https://storage.googleapis.com/wvmedia/clear/h264/tears/tears.mpd
         //goExoPlayer.setMediaInfo("/storage/emulated/0/DCIM/WonderVideo/VID_20190124_122309771.mp4");
-        goExoPlayer.setMediaInfo("https://commondatastorage.googleapis.com/gtv-videos-bucket/CastVideos/hls/TearsOfSteel.m3u8")
+        goExoPlayer.setMediaInfo("http://clips.vorwaerts-gmbh.de/big_buck_bunny.mp4")
+        //goExoPlayer.setMediaInfo("https://commondatastorage.googleapis.com/gtv-videos-bucket/CastVideos/hls/TearsOfSteel.m3u8")
         goExoPlayer.setDisPlay(GLDisPlay(textureView))
-        //goExoPlayer.initPlayer();
         goExoPlayer.addPlayListener(this)
+    }
 
+    private fun setListener() {
         progressBar.setOnSeekBarChangeListener(this)
+        aspectRatioFrameLayout.setOnClickListener(this)
+    }
+
+    override fun onClick(v: View?) {
+        when(v?.id) {
+            R.id.aspectFrameLayout -> {
+                if (goExoPlayer.isPlaying()) {
+                    goExoPlayer.pausePlay()
+                } else {
+                    goExoPlayer.startPlay()
+                }
+            }
+        }
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
@@ -104,11 +131,11 @@ class MainActivity : AppCompatActivity(), IPlayListener, SeekBar.OnSeekBarChange
     }
 
     override fun onPlayResume() {
-
+        playButton.visibility = View.INVISIBLE
     }
 
     override fun onPlayPause() {
-
+        playButton.visibility = View.VISIBLE
     }
 
     override fun onPlayPosition(pos: Long) {
@@ -125,14 +152,16 @@ class MainActivity : AppCompatActivity(), IPlayListener, SeekBar.OnSeekBarChange
 
     override fun onBufferStart(eventTime: AnalyticsListener.EventTime?, playWhenReady: Boolean) {
         loadingProgress.visibility = View.VISIBLE
+        playButton.visibility = View.INVISIBLE
     }
 
     override fun onBufferEnd(eventTime: AnalyticsListener.EventTime?, playWhenReady: Boolean) {
         loadingProgress.visibility = View.INVISIBLE
+        playButton.visibility = if (playWhenReady) View.INVISIBLE else View.VISIBLE
     }
 
     override fun onBufferingUpdate(percent: Int?) {
-
+        Log.w(GoExoPlayer.TAG, "percent = " + percent)
     }
 
     override fun onSeekStarted(eventTime: AnalyticsListener.EventTime?) {
@@ -143,8 +172,9 @@ class MainActivity : AppCompatActivity(), IPlayListener, SeekBar.OnSeekBarChange
 
     }
 
-    override fun onSeekComoleted(eventTime: AnalyticsListener.EventTime?) {
+    override fun onSeekComoleted(eventTime: AnalyticsListener.EventTime?, playWhenReady: Boolean) {
         loadingProgress.visibility = View.INVISIBLE
+        playButton.visibility = if (playWhenReady) View.INVISIBLE else View.VISIBLE
     }
 
     override fun onVideoSizeChanged(

@@ -20,8 +20,8 @@ import java.io.File
  **/
 object DataSourceFactoryProvider {
 
-    val CACHE_DIR = "/storage/emulated/0/exoplayer/"
-    val CACHE_NAME = "cache"
+    val CACHE_DIR = null
+    val CACHE_NAME = "exoplayer"
     val CACHE_SIZE = 100 * 1024 * 1024L
 
     interface DataSourceFactoryProvider {
@@ -65,9 +65,11 @@ object DataSourceFactoryProvider {
                         // Updates the network data source to use the OKHttp implementation
                         val upstreamFactory = OkHttpDataSourceFactory(OkHttpClient(), userAgent, listener)
 
+                        //cache dir is null use app cahce path, otherwise use customer
+                        val cacheDir = cache.cachDir?: context.cacheDir.absolutePath
                         // Adds a cache around the upstreamFactory
                         val cache = SimpleCache(
-                            File(cache.cachDir, cache.cacheName),
+                            File(cacheDir, cache.cacheName),
                             LeastRecentlyUsedCacheEvictor(cache.cacheSize)
                         )
                         instance =

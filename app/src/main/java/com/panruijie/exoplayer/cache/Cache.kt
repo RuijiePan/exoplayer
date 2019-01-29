@@ -6,7 +6,7 @@ package com.panruijie.exoplayer.cache
  **/
 class Cache(builder: CacheBuilder) {
 
-    val cachDir : String
+    val cachDir : String?
     val cacheSize : Long
     val cacheName : String
 
