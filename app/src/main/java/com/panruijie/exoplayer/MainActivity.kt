@@ -11,22 +11,20 @@ import android.util.Log
 import android.view.Surface
 import android.view.TextureView
 import android.view.View
-import android.widget.ImageButton
-import android.widget.ImageView
-import android.widget.ProgressBar
-import android.widget.SeekBar
+import android.widget.*
 
 import com.panruijie.exoplayer.base.IPlayListener
 import com.panruijie.exoplayer.source.GLDisPlay
 import com.google.android.exoplayer2.Timeline
 import com.google.android.exoplayer2.analytics.AnalyticsListener
 import com.google.android.exoplayer2.ui.AspectRatioFrameLayout
+import com.google.android.exoplayer2.ui.AspectRatioFrameLayout.*
 
-import com.google.android.exoplayer2.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
 import com.panruijie.exoplayer.R
+import com.panruijie.exoplayer.cache.DataSourceFactoryProvider
 import kotlinx.android.synthetic.main.activity_main.*
 
-class MainActivity : AppCompatActivity(), IPlayListener, SeekBar.OnSeekBarChangeListener, View.OnClickListener {
+class MainActivity : AppCompatActivity(), IPlayListener, SeekBar.OnSeekBarChangeListener, View.OnClickListener, CompoundButton.OnCheckedChangeListener {
 
     companion object {
         private val REQUEST_EXTERNAL_STORAGE = 1
@@ -54,6 +52,7 @@ class MainActivity : AppCompatActivity(), IPlayListener, SeekBar.OnSeekBarChange
         aspectRatioFrameLayout.setAspectRatio(1f)
 
         requestPermission()
+        initData()
         initPlayer()
         setListener()
     }
@@ -70,6 +69,18 @@ class MainActivity : AppCompatActivity(), IPlayListener, SeekBar.OnSeekBarChange
         }
     }
 
+    private fun initData() {
+        typeOTHER.isChecked = true
+        fit.isChecked = true
+        okhttpProvider.isChecked = true
+        speedSeekbar.max = 400
+        speedSeekbar.progress = 100
+        pitchSeekbar.max = 400
+        pitchSeekbar.progress = 100
+        renderAfterSeek.isChecked = true
+        mode_one.isChecked = true
+    }
+
     private fun initPlayer() {
         goExoPlayer = GoExoPlayer(this)
         //https://commondatastorage.googleapis.com/gtv-videos-bucket/CastVideos/hls/TearsOfSteel.m3u8
@@ -84,6 +95,28 @@ class MainActivity : AppCompatActivity(), IPlayListener, SeekBar.OnSeekBarChange
     private fun setListener() {
         progressBar.setOnSeekBarChangeListener(this)
         aspectRatioFrameLayout.setOnClickListener(this)
+
+        typeSS.setOnCheckedChangeListener(this)
+        typeDASH.setOnCheckedChangeListener(this)
+        typeHLS.setOnCheckedChangeListener(this)
+        typeOTHER.setOnCheckedChangeListener(this)
+
+        fit.setOnCheckedChangeListener(this)
+        fit_width.setOnCheckedChangeListener(this)
+        fit_height.setOnCheckedChangeListener(this)
+        fill.setOnCheckedChangeListener(this)
+        zoom.setOnCheckedChangeListener(this)
+
+        apacheProvider.setOnCheckedChangeListener(this)
+        okhttpProvider.setOnCheckedChangeListener(this)
+
+        speedSeekbar.setOnSeekBarChangeListener(this)
+        pitchSeekbar.setOnSeekBarChangeListener(this)
+
+        mode_one.setOnCheckedChangeListener(this)
+        mode_all.setOnCheckedChangeListener(this)
+        mode_off.setOnCheckedChangeListener(this)
+
     }
 
     override fun onClick(v: View?) {
@@ -236,8 +269,26 @@ class MainActivity : AppCompatActivity(), IPlayListener, SeekBar.OnSeekBarChange
 
     override fun onProgressChanged(seekBar: SeekBar, progress: Int, fromUser: Boolean) {
         if (fromUser) {
-            progressBar.progress = progress
-            goExoPlayer.seekTo(progress.toLong())
+            when(seekBar.id) {
+                R.id.progressSeekBar -> {
+                    progressBar.progress = progress
+                    goExoPlayer.seekTo(progress.toLong())
+                }
+                R.id.speedSeekbar -> {
+                    if (progress < 50) {
+                        seekBar.progress = 50
+                    } else {
+                        goExoPlayer.setSpeed(progress / 100f)
+                    }
+                }
+                R.id.pitchSeekbar -> {
+                    if (progress < 50) {
+                        seekBar.progress = 50
+                    } else {
+                        goExoPlayer.setPitch(progress / 100f)
+                    }
+                }
+            }
         }
     }
 
@@ -249,4 +300,84 @@ class MainActivity : AppCompatActivity(), IPlayListener, SeekBar.OnSeekBarChange
 
     }
 
+    override fun onCheckedChanged(buttonView: CompoundButton?, isChecked: Boolean) {
+        if (isChecked) {
+            when (buttonView?.id) {
+                R.id.typeSS -> {
+                    unCheck(mutableListOf(typeDASH, typeHLS, typeOTHER))
+                }
+                R.id.typeDASH -> {
+                    unCheck(mutableListOf(typeSS, typeHLS, typeOTHER))
+                }
+                R.id.typeHLS -> {
+                    unCheck(mutableListOf(typeDASH, typeSS, typeOTHER))
+                }
+                R.id.typeOTHER -> {
+                    unCheck(mutableListOf(typeDASH, typeHLS, typeSS))
+                }
+
+                R.id.fit -> {
+                    aspectRatioFrameLayout.resizeMode = RESIZE_MODE_FIT
+                    unCheck(mutableListOf(fit_width, fit_height, fill, zoom))
+                }
+                R.id.fit_width -> {
+                    aspectRatioFrameLayout.resizeMode = RESIZE_MODE_FIXED_WIDTH
+                    unCheck(mutableListOf(fit, fit_height, fill, zoom))
+                }
+                R.id.fit_height -> {
+                    aspectRatioFrameLayout.resizeMode = RESIZE_MODE_FIXED_HEIGHT
+                    unCheck(mutableListOf(fit_width, fit, fill, zoom))
+                }
+                R.id.fill -> {
+                    aspectRatioFrameLayout.resizeMode = RESIZE_MODE_FILL
+                    unCheck(mutableListOf(fit_width, fit_height, fit, zoom))
+                }
+                R.id.zoom -> {
+                    aspectRatioFrameLayout.resizeMode = RESIZE_MODE_ZOOM
+                    unCheck(mutableListOf(fit_width, fit_height, fill, fit))
+                }
+
+                R.id.apacheProvider -> {
+                    DataSourceFactoryProvider.setProviderType(DataSourceFactoryProvider.ProviderType.APACHE)
+                    okhttpProvider.isChecked = false
+                    goExoPlayer.releasePlayer()
+                    goExoPlayer.initPlayer()
+                }
+                R.id.okhttpProvider -> {
+                    DataSourceFactoryProvider.setProviderType(DataSourceFactoryProvider.ProviderType.OKHTTP)
+                    apacheProvider.isChecked = false
+                    goExoPlayer.releasePlayer()
+                    goExoPlayer.initPlayer()
+                }
+
+                R.id.mode_all -> {
+                    goExoPlayer.setLooping(true)
+                    unCheck(mutableListOf(mode_off, mode_one))
+                }
+                R.id.mode_off -> {
+                    goExoPlayer.setLoopingSingle(0, true)
+                    unCheck(mutableListOf(mode_all, mode_one))
+                }
+                R.id.mode_one -> {
+                    goExoPlayer.setLooping(false)
+                    goExoPlayer.setLoopingSingle(0, false)
+                    unCheck(mutableListOf(mode_off, mode_all))
+                }
+
+                R.id.renderAfterSeek -> {
+                    goExoPlayer.isSeekableAfterFrameRenderer = true
+                }
+            }
+        } else {
+            if (buttonView?.id == R.id.renderAfterSeek) {
+                goExoPlayer.isSeekableAfterFrameRenderer = false
+            }
+        }
+    }
+
+    private fun unCheck(view : MutableList<CheckBox>) {
+        view.forEach {
+            it.isChecked = false
+        }
+    }
 }

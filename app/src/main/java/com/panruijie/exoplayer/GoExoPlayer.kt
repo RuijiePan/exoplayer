@@ -84,7 +84,7 @@ class GoExoPlayer(private val context: Context) : IExoPlayer, AnalyticsListener 
     /**
      * 是否等待刷新了画面帧之后再刷新下一帧
      */
-    private var isSeekableAfterFrameRenderer = true
+    var isSeekableAfterFrameRenderer = true
     var buildClipSource = true
     private var exoPlayer: SimpleExoPlayer? = null
     private var playbackParameters: PlaybackParameters = PlaybackParameters.DEFAULT
