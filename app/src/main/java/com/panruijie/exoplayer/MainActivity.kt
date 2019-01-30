@@ -10,6 +10,8 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.support.v7.widget.AppCompatSeekBar
+import android.support.v7.widget.DefaultItemAnimator
+import android.support.v7.widget.LinearLayoutManager
 import android.util.Log
 import android.view.Surface
 import android.view.TextureView
@@ -24,11 +26,15 @@ import com.google.android.exoplayer2.ui.AspectRatioFrameLayout
 import com.google.android.exoplayer2.ui.AspectRatioFrameLayout.*
 
 import com.panruijie.exoplayer.R
+import com.panruijie.exoplayer.base.adapter.BaseLinearLayoutManager
 import com.panruijie.exoplayer.cache.DataSourceFactoryProvider
+import com.panruijie.exoplayer.filter.FilterAdapter
+import com.panruijie.exoplayer.filter.FilterInfo
 import com.panruijie.exoplayer.gpuimage.GoGpuImage
 import com.panruijie.exoplayer.gpuimage.IRenderCallback
 import com.panruijie.exoplayer.gpuimage.filter.GPUImageOESFilter
 import jp.co.cyberagent.android.gpuimage.filter.GPUImageBoxBlurFilter
+import jp.co.cyberagent.android.gpuimage.filter.GPUImageFilter
 import jp.co.cyberagent.android.gpuimage.filter.GPUImageFilterGroup
 import jp.co.cyberagent.android.gpuimage.util.Rotation
 import kotlinx.android.synthetic.main.activity_main.*
@@ -55,6 +61,7 @@ class MainActivity : AppCompatActivity(), IPlayListener, SeekBar.OnSeekBarChange
     private lateinit var loadingProgress: ProgressBar
     private lateinit var playButton : ImageView
     private lateinit var gpuImage : GoGpuImage
+    private val filterGroup = GPUImageFilterGroup()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -96,15 +103,29 @@ class MainActivity : AppCompatActivity(), IPlayListener, SeekBar.OnSeekBarChange
         renderAfterSeek.isChecked = true
         mode_off.isChecked = true
         path.text = OTHER
+
+        val filterAdapter = FilterAdapter(this, FilterInfo.values().toMutableList())
+        recyclerview.setItemAnimator(DefaultItemAnimator())
+        val layoutManager = BaseLinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
+        recyclerview.setLayoutManager(layoutManager)
+        recyclerview.setHasFixedSize(true)
+        recyclerview.setAdapter(filterAdapter)
+        filterAdapter.listener = object : FilterAdapter.IFilterChooseListener {
+            override fun filterChoose(filter: GPUImageFilter) {
+                if(filterGroup.filters.size > 1) {
+                    filterGroup.filters.removeAt(1)
+                }
+                filterGroup.addFilter(filter)
+                gpuImage.setFilter(filterGroup)
+            }
+        }
     }
 
     private fun initPlayer() {
         goExoPlayer = GoExoPlayer(this)
         goExoPlayer.setMediaInfo("http://clips.vorwaerts-gmbh.de/big_buck_bunny.mp4")
 
-        val group = GPUImageFilterGroup()
-        group.addFilter(GPUImageOESFilter())
-        group.addFilter(GPUImageBoxBlurFilter())
+        filterGroup.addFilter(GPUImageOESFilter())
         goExoPlayer.addPlayListener(this)
 
         gpuImage = GoGpuImage(this, object : IRenderCallback {
@@ -119,7 +140,7 @@ class MainActivity : AppCompatActivity(), IPlayListener, SeekBar.OnSeekBarChange
 
         })
         gpuImage.setScaleType(GoGpuImage.ScaleType.CENTER_CROP)
-        gpuImage.setFilter(group)
+        gpuImage.setFilter(filterGroup)
         gpuImage.setGLSurfaceView(glSurfaceView)
         //gpuImage.setRotation(Rotation.ROTATION_180)
     }
@@ -187,7 +208,7 @@ class MainActivity : AppCompatActivity(), IPlayListener, SeekBar.OnSeekBarChange
     override fun onResume() {
         super.onResume()
         goExoPlayer.onResume()
-        glSurfaceView.onResume()
+        //glSurfaceView.onResume()
     }
 
     override fun onStop() {
@@ -198,7 +219,7 @@ class MainActivity : AppCompatActivity(), IPlayListener, SeekBar.OnSeekBarChange
     override fun onPause() {
         super.onPause()
         goExoPlayer.onPause()
-        glSurfaceView.onPause()
+        //glSurfaceView.onPause()
     }
 
     override fun onPlayResume() {
