@@ -2,10 +2,13 @@ package com.panruijie.exoplayer
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.graphics.SurfaceTexture
 import android.os.Build
 import android.support.v4.app.ActivityCompat
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.support.v7.widget.AppCompatSeekBar
 import android.util.Log
 import android.view.Surface
@@ -22,6 +25,12 @@ import com.google.android.exoplayer2.ui.AspectRatioFrameLayout.*
 
 import com.panruijie.exoplayer.R
 import com.panruijie.exoplayer.cache.DataSourceFactoryProvider
+import com.panruijie.exoplayer.gpuimage.GoGpuImage
+import com.panruijie.exoplayer.gpuimage.IRenderCallback
+import com.panruijie.exoplayer.gpuimage.filter.GPUImageOESFilter
+import jp.co.cyberagent.android.gpuimage.filter.GPUImageBoxBlurFilter
+import jp.co.cyberagent.android.gpuimage.filter.GPUImageFilterGroup
+import jp.co.cyberagent.android.gpuimage.util.Rotation
 import kotlinx.android.synthetic.main.activity_main.*
 
 class MainActivity : AppCompatActivity(), IPlayListener, SeekBar.OnSeekBarChangeListener, View.OnClickListener, CompoundButton.OnCheckedChangeListener {
@@ -30,20 +39,27 @@ class MainActivity : AppCompatActivity(), IPlayListener, SeekBar.OnSeekBarChange
         private val REQUEST_EXTERNAL_STORAGE = 1
         private val PERMISSIONS_STORAGE =
             arrayOf("android.permission.READ_EXTERNAL_STORAGE", "android.permission.WRITE_EXTERNAL_STORAGE")
+
+        private val SS = ""
+        //https://storage.googleapis.com/wvmedia/clear/h264/tears/tears.mpd
+        private val DASH = "https://content.uplynk.com/channel/3c367669a83b4cdab20cceefac253684.mpd?ad=cleardashnew"
+        //直播
+        private val HLS = "http://devimages.apple.com/iphone/samples/bipbop/bipbopall.m3u8"
+        //网络MP4
+        private val OTHER = "http://clips.vorwaerts-gmbh.de/big_buck_bunny.mp4"
     }
 
-    private lateinit var textureView: TextureView
     private lateinit var aspectRatioFrameLayout: AspectRatioFrameLayout
     private lateinit var goExoPlayer: GoExoPlayer
     private lateinit var progressBar: AppCompatSeekBar
     private lateinit var loadingProgress: ProgressBar
     private lateinit var playButton : ImageView
+    private lateinit var gpuImage : GoGpuImage
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
         aspectRatioFrameLayout = findViewById(R.id.aspectFrameLayout)
-        textureView = findViewById(R.id.textureView)
         progressBar = findViewById(R.id.progressSeekBar)
         loadingProgress = findViewById(R.id.loadingProgress)
         playButton = findViewById(R.id.playButton)
@@ -78,18 +94,34 @@ class MainActivity : AppCompatActivity(), IPlayListener, SeekBar.OnSeekBarChange
         pitchSeekbar.max = 400
         pitchSeekbar.progress = 100
         renderAfterSeek.isChecked = true
-        mode_one.isChecked = true
+        mode_off.isChecked = true
+        path.text = OTHER
     }
 
     private fun initPlayer() {
         goExoPlayer = GoExoPlayer(this)
-        //https://commondatastorage.googleapis.com/gtv-videos-bucket/CastVideos/hls/TearsOfSteel.m3u8
-        //https://storage.googleapis.com/wvmedia/clear/h264/tears/tears.mpd
-        //goExoPlayer.setMediaInfo("/storage/emulated/0/DCIM/WonderVideo/VID_20190124_122309771.mp4");
         goExoPlayer.setMediaInfo("http://clips.vorwaerts-gmbh.de/big_buck_bunny.mp4")
-        //goExoPlayer.setMediaInfo("https://commondatastorage.googleapis.com/gtv-videos-bucket/CastVideos/hls/TearsOfSteel.m3u8")
-        goExoPlayer.setDisPlay(GLDisPlay(textureView))
+
+        val group = GPUImageFilterGroup()
+        group.addFilter(GPUImageOESFilter())
+        group.addFilter(GPUImageBoxBlurFilter())
         goExoPlayer.addPlayListener(this)
+
+        gpuImage = GoGpuImage(this, object : IRenderCallback {
+            override fun onSurfaceTextureCreated(surfaceTexture: SurfaceTexture?) {
+                goExoPlayer.setDisPlay(GLDisPlay(surfaceTexture))
+                goExoPlayer.initPlayer()
+            }
+
+            override fun onFrameAvailable(frameTimeNanos: Long) {
+                gpuImage.requestRender()
+            }
+
+        })
+        gpuImage.setScaleType(GoGpuImage.ScaleType.CENTER_CROP)
+        gpuImage.setFilter(group)
+        gpuImage.setGLSurfaceView(glSurfaceView)
+        //gpuImage.setRotation(Rotation.ROTATION_180)
     }
 
     private fun setListener() {
@@ -117,6 +149,10 @@ class MainActivity : AppCompatActivity(), IPlayListener, SeekBar.OnSeekBarChange
         mode_all.setOnCheckedChangeListener(this)
         mode_off.setOnCheckedChangeListener(this)
 
+        rotation0.setOnCheckedChangeListener(this)
+        rotation90.setOnCheckedChangeListener(this)
+        rotation180.setOnCheckedChangeListener(this)
+        rotation270.setOnCheckedChangeListener(this)
     }
 
     override fun onClick(v: View?) {
@@ -135,9 +171,9 @@ class MainActivity : AppCompatActivity(), IPlayListener, SeekBar.OnSeekBarChange
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == REQUEST_EXTERNAL_STORAGE) {
             for (i in permissions.indices) {
-                if (grantResults[i] == 0) {
+                /*if (grantResults[i] == 0) {
                     goExoPlayer.initPlayer()
-                }
+                }*/
                 Log.i("MainActivity", "申请的权限为：" + permissions[i] + ",申请结果：" + grantResults[i])
             }
         }
@@ -151,6 +187,7 @@ class MainActivity : AppCompatActivity(), IPlayListener, SeekBar.OnSeekBarChange
     override fun onResume() {
         super.onResume()
         goExoPlayer.onResume()
+        glSurfaceView.onResume()
     }
 
     override fun onStop() {
@@ -161,6 +198,7 @@ class MainActivity : AppCompatActivity(), IPlayListener, SeekBar.OnSeekBarChange
     override fun onPause() {
         super.onPause()
         goExoPlayer.onPause()
+        glSurfaceView.onPause()
     }
 
     override fun onPlayResume() {
@@ -225,6 +263,8 @@ class MainActivity : AppCompatActivity(), IPlayListener, SeekBar.OnSeekBarChange
             height = temp
         }
         aspectRatioFrameLayout.setAspectRatio(width * 1.0f / height)
+        gpuImage.setInputInfo(width, height)
+        gpuImage.setRotation(Rotation.fromInt(unappliedRotationDegrees))
     }
 
     override fun onRenderedFirstFrame(eventTime: AnalyticsListener.EventTime?, surface: Surface?) {
@@ -304,16 +344,33 @@ class MainActivity : AppCompatActivity(), IPlayListener, SeekBar.OnSeekBarChange
         if (isChecked) {
             when (buttonView?.id) {
                 R.id.typeSS -> {
-                    unCheck(mutableListOf(typeDASH, typeHLS, typeOTHER))
+                    Toast.makeText(this, "not support now!", Toast.LENGTH_SHORT).show()
+                    /*unCheck(mutableListOf(typeDASH, typeHLS, typeOTHER))
+                    goExoPlayer.releasePlayer()
+                    goExoPlayer.setMediaInfo(SS)
+                    goExoPlayer.initPlayer()
+                    path.text = SS*/
                 }
                 R.id.typeDASH -> {
                     unCheck(mutableListOf(typeSS, typeHLS, typeOTHER))
+                    goExoPlayer.releasePlayer()
+                    goExoPlayer.setMediaInfo(DASH)
+                    goExoPlayer.initPlayer()
+                    path.text = DASH
                 }
                 R.id.typeHLS -> {
                     unCheck(mutableListOf(typeDASH, typeSS, typeOTHER))
+                    goExoPlayer.releasePlayer()
+                    goExoPlayer.setMediaInfo(HLS)
+                    goExoPlayer.initPlayer()
+                    path.text = HLS
                 }
                 R.id.typeOTHER -> {
                     unCheck(mutableListOf(typeDASH, typeHLS, typeSS))
+                    goExoPlayer.releasePlayer()
+                    goExoPlayer.setMediaInfo(OTHER)
+                    goExoPlayer.initPlayer()
+                    path.text = OTHER
                 }
 
                 R.id.fit -> {
@@ -355,13 +412,31 @@ class MainActivity : AppCompatActivity(), IPlayListener, SeekBar.OnSeekBarChange
                     unCheck(mutableListOf(mode_off, mode_one))
                 }
                 R.id.mode_off -> {
-                    goExoPlayer.setLoopingSingle(0, true)
+                    goExoPlayer.setLooping(false)
+                    goExoPlayer.setLoopingSingle(false)
                     unCheck(mutableListOf(mode_all, mode_one))
                 }
                 R.id.mode_one -> {
                     goExoPlayer.setLooping(false)
-                    goExoPlayer.setLoopingSingle(0, false)
+                    goExoPlayer.setLoopingSingle(true)
                     unCheck(mutableListOf(mode_off, mode_all))
+                }
+
+                R.id.rotation0 -> {
+                    gpuImage.setRotation(Rotation.NORMAL)
+                    unCheck(mutableListOf(rotation90, rotation180, rotation270))
+                }
+                R.id.rotation90 -> {
+                    gpuImage.setRotation(Rotation.ROTATION_90)
+                    unCheck(mutableListOf(rotation0, rotation180, rotation270))
+                }
+                R.id.rotation180 -> {
+                    gpuImage.setRotation(Rotation.ROTATION_180)
+                    unCheck(mutableListOf(rotation90, rotation0, rotation270))
+                }
+                R.id.rotation270 -> {
+                    gpuImage.setRotation(Rotation.ROTATION_270)
+                    unCheck(mutableListOf(rotation90, rotation180, rotation0))
                 }
 
                 R.id.renderAfterSeek -> {

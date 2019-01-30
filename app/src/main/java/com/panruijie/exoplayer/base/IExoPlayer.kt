@@ -32,7 +32,7 @@ interface IExoPlayer : IPlayer {
     /**
      * 单段视频循环
      */
-    fun setLoopingSingle(window : Int, looping : Boolean)
+    fun setLoopingSingle(looping : Boolean)
 
     /**
      * 在当前window里面seekto
@@ -53,6 +53,11 @@ interface IExoPlayer : IPlayer {
      * 切换视频源
      */
     fun setWindow(window : Int)
+
+    /**
+     * 当前播放源下标
+     */
+    fun getWindow() : Int
 
     /**
      * 第一帧刷出来的时候跑的任务

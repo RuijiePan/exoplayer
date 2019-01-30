@@ -21,6 +21,10 @@ public class GLDisPlay implements IMediaDisplay {
     private SurfaceTexture mSurfaceTexture;
     private TextureView mTextureView;
 
+    public GLDisPlay(Surface surface) {
+        this.mSurface = surface;
+    }
+
     public GLDisPlay(SurfaceTexture surfaceTexture) {
         this.mSurfaceTexture = surfaceTexture;
         this.mSurface = new Surface(surfaceTexture);
@@ -65,4 +69,5 @@ public class GLDisPlay implements IMediaDisplay {
     public TextureView getTextureView() {
         return mTextureView;
     }
+
 }

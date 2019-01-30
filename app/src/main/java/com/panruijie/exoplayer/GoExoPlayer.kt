@@ -4,6 +4,8 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Handler
+import android.os.Looper
 import android.os.PowerManager
 import android.os.PowerManager.SCREEN_BRIGHT_WAKE_LOCK
 import android.util.Log
@@ -25,11 +27,7 @@ import com.google.android.exoplayer2.source.smoothstreaming.DefaultSsChunkSource
 import com.google.android.exoplayer2.source.smoothstreaming.SsMediaSource
 import com.google.android.exoplayer2.trackselection.AdaptiveTrackSelection
 import com.google.android.exoplayer2.trackselection.DefaultTrackSelector
-import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory
-import com.google.android.exoplayer2.upstream.TransferListener
 import com.google.android.exoplayer2.util.Util
-import com.panruijie.exoplayer.cache.Cache
-import com.panruijie.exoplayer.cache.CacheBuilder
 import com.panruijie.exoplayer.cache.DataSourceFactoryProvider
 import java.util.ArrayList
 import java.util.concurrent.CopyOnWriteArrayList
@@ -95,6 +93,7 @@ class GoExoPlayer(private val context: Context) : IExoPlayer, AnalyticsListener 
     private val concatenatedSource: ConcatenatingMediaSource = ConcatenatingMediaSource()
     private val stateStore: StateStore = StateStore()
     private val wakeLock: PowerManager.WakeLock?
+    private val mainHanlder = Handler(Looper.getMainLooper())
 
     companion object {
         val TAG = "GoExoPlayer"
@@ -213,42 +212,45 @@ class GoExoPlayer(private val context: Context) : IExoPlayer, AnalyticsListener 
     }
 
     @Synchronized
+    //Must be init in main thread
     override fun initPlayer() {
-        if (initPlayer) {
+        if (initPlayer || !::display.isInitialized) {
             return
         }
         initPlayer = true
-        val adaptiveTrackSelectionFactory = AdaptiveTrackSelection.Factory()
-        val trackSelector = DefaultTrackSelector(adaptiveTrackSelectionFactory)
-        val renderersFactory = DefaultRenderersFactory(context)
-        exoPlayer = ExoPlayerFactory.newSimpleInstance(context, renderersFactory, trackSelector)
-        exoPlayer?.addAnalyticsListener(this)
-        if (display.getSurface() != null) {
-            exoPlayer?.setVideoSurface(display.getSurface())
-        } else if (display.getTextureView() != null) {
-            exoPlayer?.setVideoTextureView(display.getTextureView())
-        } else if (display.getSurfaceView() != null) {
-            exoPlayer?.setVideoSurfaceView(display.getSurfaceView())
-        }
-        renderFirstFrame = false
-        isLoadingSource = true
-        playListenerList.forEach {
-            it.onLoadingSource(loadingStatue = IPlayListener.LoadingStatue.START)
-        }
-        exoPlayer?.volume = volume
-        exoPlayer?.repeatMode = repeatMode
-        playbackParameters = PlaybackParameters(speed, pitch)
-        exoPlayer?.playbackParameters = playbackParameters
-        exoPlayer?.playWhenReady = playWhenReady
+        mainHanlder.post {
+            val adaptiveTrackSelectionFactory = AdaptiveTrackSelection.Factory()
+            val trackSelector = DefaultTrackSelector(adaptiveTrackSelectionFactory)
+            val renderersFactory = DefaultRenderersFactory(context)
+            exoPlayer = ExoPlayerFactory.newSimpleInstance(context, renderersFactory, trackSelector)
+            exoPlayer?.addAnalyticsListener(this)
+            if (display.getSurface() != null) {
+                exoPlayer?.setVideoSurface(display.getSurface())
+            } else if (display.getTextureView() != null) {
+                exoPlayer?.setVideoTextureView(display.getTextureView())
+            } else if (display.getSurfaceView() != null) {
+                exoPlayer?.setVideoSurfaceView(display.getSurfaceView())
+            }
+            renderFirstFrame = false
+            isLoadingSource = true
+            playListenerList.forEach {
+                it.onLoadingSource(loadingStatue = IPlayListener.LoadingStatue.START)
+            }
+            exoPlayer?.volume = volume
+            exoPlayer?.repeatMode = repeatMode
+            playbackParameters = PlaybackParameters(speed, pitch)
+            exoPlayer?.playbackParameters = playbackParameters
+            exoPlayer?.playWhenReady = playWhenReady
 
-        concatenatedSource.clear()
-        if (buildClipSource) {
-            concatenatedSource.addMediaSources(buildClipMediaSource(mediaInfoList))
-        } else {
-            concatenatedSource.addMediaSources(buildMediaSource(mediaInfoList))
-        }
+            concatenatedSource.clear()
+            if (buildClipSource) {
+                concatenatedSource.addMediaSources(buildClipMediaSource(mediaInfoList))
+            } else {
+                concatenatedSource.addMediaSources(buildMediaSource(mediaInfoList))
+            }
 
-        exoPlayer?.prepare(concatenatedSource)
+            exoPlayer?.prepare(concatenatedSource)
+        }
     }
 
     @Synchronized
@@ -257,20 +259,22 @@ class GoExoPlayer(private val context: Context) : IExoPlayer, AnalyticsListener 
             return
         }
         initPlayer = false
-        playRepeater.stop()
-        bufferRepeater.stop()
-        exoPlayer?.playWhenReady = false
-        stateStore.resetState()
-        renderFirstFrame = false
-        concatenatedSource.releaseSourceInternal()
-        concatenatedSource.clear()
-        pendSeekPos = getCurrentPosition()
-        synchronized(runOnRenderFirstFrame) {
-            runOnRenderFirstFrame.clear()
+        mainHanlder.post {
+            playRepeater.stop()
+            bufferRepeater.stop()
+            exoPlayer?.playWhenReady = false
+            stateStore.resetState()
+            renderFirstFrame = false
+            concatenatedSource.releaseSourceInternal()
+            concatenatedSource.clear()
+            pendSeekPos = getCurrentPosition()
+            synchronized(runOnRenderFirstFrame) {
+                runOnRenderFirstFrame.clear()
+            }
+            exoPlayer?.removeAnalyticsListener(this)
+            exoPlayer?.release()
+            exoPlayer = null
         }
-        exoPlayer?.removeAnalyticsListener(this)
-        exoPlayer?.release()
-        exoPlayer = null
     }
 
     override fun setMediaInfo(path: String) {
@@ -505,13 +509,17 @@ class GoExoPlayer(private val context: Context) : IExoPlayer, AnalyticsListener 
         exoPlayer?.repeatMode = repeatMode
     }
 
-    override fun setLoopingSingle(window: Int, looping: Boolean) {
+    override fun setLoopingSingle(looping: Boolean) {
         if (looping) {
             repeatMode = REPEAT_MODE_ONE
         } else {
             repeatMode = REPEAT_MODE_OFF
         }
         exoPlayer?.repeatMode = repeatMode
+    }
+
+    override fun getWindow(): Int {
+        return exoPlayer?.currentWindowIndex?: 0
     }
 
     override fun setVolume(volume: Float) {

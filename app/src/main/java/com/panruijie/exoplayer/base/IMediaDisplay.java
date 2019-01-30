@@ -22,4 +22,5 @@ public interface IMediaDisplay {
     SurfaceTexture getSurfaceTexture();
 
     TextureView getTextureView();
+
 }
