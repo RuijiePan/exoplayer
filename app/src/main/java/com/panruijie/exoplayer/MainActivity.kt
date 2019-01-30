@@ -113,14 +113,14 @@ class MainActivity : AppCompatActivity(), IPlayListener, SeekBar.OnSeekBarChange
         recyclerview.setAdapter(filterAdapter)
         filterAdapter.listener = object : FilterAdapter.IFilterChooseListener {
             override fun filterChoose(id: Int) {
-                if(filterGroup.filters.size > 1) {
-                    filterGroup.filters.removeAt(1)
+                filterGroup.filters.clear()
+                filterGroup.addFilter(GPUImageOESFilter())
+                FilterHelper.createFilterFromId(id).also {
+                    if (it != null) {
+                        filterGroup.addFilter(it)
+                    }
                 }
-                val filter = FilterHelper.createFilterFromId(id)
-                if(filter != null) {
-                    filterGroup.addFilter(filter)
-                    gpuImage.setFilter(filterGroup)
-                }
+                gpuImage.setFilter(filterGroup)
             }
         }
     }

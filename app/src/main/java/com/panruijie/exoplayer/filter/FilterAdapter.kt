@@ -1,8 +1,12 @@
 package com.panruijie.exoplayer.filter
 
 import android.content.Context
+import android.graphics.Color
+import android.os.Handler
+import android.os.Looper
 import android.widget.CheckBox
 import android.widget.CompoundButton
+import android.widget.TextView
 import com.panruijie.exoplayer.R
 import com.panruijie.exoplayer.base.adapter.BaseAdapter
 import com.panruijie.exoplayer.base.adapter.BaseViewHolder
@@ -15,29 +19,28 @@ import java.lang.IllegalArgumentException
 class FilterAdapter(context: Context?, data: MutableList<FilterInfo>?) :
     BaseAdapter<FilterInfo, BaseViewHolder>(context, R.layout.filter_item, data) {
 
-    var lastIndex = -1
-    var listener : IFilterChooseListener? = null
+    var listener: IFilterChooseListener? = null
+    private val mainHanlder = Handler(Looper.getMainLooper())
 
     override fun convert(holder: BaseViewHolder?, item: FilterInfo?, position: Int) {
-        val checkBox = holder?.getView<CheckBox>(R.id.checkBox)
-        checkBox?.isChecked = item?.check?: false
         holder?.setText(R.id.filterName, item?.name)
-        checkBox?.setOnCheckedChangeListener {
-            _, ischeck ->
-            item?.check = ischeck
-            if (ischeck) {
-                mData.forEachIndexed { index, filterInfo ->
-                    if (index != position) {
-                        filterInfo.check = false
-                    }
+        val text = holder?.getView<TextView>(R.id.filterName)
+        if(item?.check?: false) {
+            text?.setTextColor(Color.GREEN)
+        } else {
+            text?.setTextColor(Color.BLACK)
+        }
+
+        text?.setOnClickListener {
+            item?.check = true
+            mData.forEachIndexed { index, filterInfo ->
+                if (index != position) {
+                    filterInfo.check = false
                 }
-                if (lastIndex != -1) {
-                    notifyItemChanged(lastIndex)
-                }
-                lastIndex = position
-                listener?.filterChoose(holder.adapterPosition)
-            } else {
-                listener?.filterChoose(0)
+            }
+            listener?.filterChoose(position)
+            mainHanlder.post {
+                notifyDataSetChanged()
             }
         }
     }
@@ -45,6 +48,7 @@ class FilterAdapter(context: Context?, data: MutableList<FilterInfo>?) :
     interface IFilterChooseListener {
 
         fun filterChoose(id: Int)
+
     }
 
 }
