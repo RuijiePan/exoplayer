@@ -56,24 +56,13 @@ class MainActivity : AppCompatActivity(), IPlayListener, SeekBar.OnSeekBarChange
         private val OTHER = "http://clips.vorwaerts-gmbh.de/big_buck_bunny.mp4"
     }
 
-    private lateinit var aspectRatioFrameLayout: AspectRatioFrameLayout
     private lateinit var goExoPlayer: GoExoPlayer
-    private lateinit var progressBar: AppCompatSeekBar
-    private lateinit var loadingProgress: ProgressBar
-    private lateinit var playButton : ImageView
     private lateinit var gpuImage : GoGpuImage
     private val filterGroup = GPUImageFilterGroup()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        aspectRatioFrameLayout = findViewById(R.id.aspectFrameLayout)
-        progressBar = findViewById(R.id.progressSeekBar)
-        loadingProgress = findViewById(R.id.loadingProgress)
-        playButton = findViewById(R.id.playButton)
-
-        aspectRatioFrameLayout.resizeMode = RESIZE_MODE_FIT
-        aspectRatioFrameLayout.setAspectRatio(1f)
 
         requestPermission()
         initData()
@@ -123,6 +112,9 @@ class MainActivity : AppCompatActivity(), IPlayListener, SeekBar.OnSeekBarChange
                 gpuImage.setFilter(filterGroup)
             }
         }
+
+        aspectFrameLayout.resizeMode = RESIZE_MODE_FIT
+        aspectFrameLayout.setAspectRatio(1f)
     }
 
     private fun initPlayer() {
@@ -150,8 +142,8 @@ class MainActivity : AppCompatActivity(), IPlayListener, SeekBar.OnSeekBarChange
     }
 
     private fun setListener() {
-        progressBar.setOnSeekBarChangeListener(this)
-        aspectRatioFrameLayout.setOnClickListener(this)
+        progressSeekBar.setOnSeekBarChangeListener(this)
+        aspectFrameLayout.setOnClickListener(this)
 
         typeSS.setOnCheckedChangeListener(this)
         typeDASH.setOnCheckedChangeListener(this)
@@ -287,7 +279,7 @@ class MainActivity : AppCompatActivity(), IPlayListener, SeekBar.OnSeekBarChange
             width = height
             height = temp
         }
-        aspectRatioFrameLayout.setAspectRatio(width * 1.0f / height)
+        aspectFrameLayout.setAspectRatio(width * 1.0f / height)
         gpuImage.setInputInfo(width, height)
         gpuImage.setRotation(Rotation.fromInt(unappliedRotationDegrees))
     }
@@ -300,9 +292,9 @@ class MainActivity : AppCompatActivity(), IPlayListener, SeekBar.OnSeekBarChange
         if (loadingStatue == IPlayListener.LoadingStatue.START ||
             loadingStatue == IPlayListener.LoadingStatue.ERROR
         ) {
-            progressBar.visibility = View.INVISIBLE
+            progressSeekBar.visibility = View.INVISIBLE
         } else {
-            progressBar.visibility = View.VISIBLE
+            progressSeekBar.visibility = View.VISIBLE
         }
     }
 
@@ -329,14 +321,14 @@ class MainActivity : AppCompatActivity(), IPlayListener, SeekBar.OnSeekBarChange
             cumulativePositionMs += window.durationMs
         }
         //Toast.makeText(this, "time = " + cumulativePositionMs, Toast.LENGTH_SHORT).show()
-        progressBar.max = cumulativePositionMs.toInt()
+        progressSeekBar.max = cumulativePositionMs.toInt()
     }
 
     override fun onProgressChanged(seekBar: SeekBar, progress: Int, fromUser: Boolean) {
         if (fromUser) {
             when(seekBar.id) {
                 R.id.progressSeekBar -> {
-                    progressBar.progress = progress
+                    progressSeekBar.progress = progress
                     goExoPlayer.seekTo(progress.toLong())
                 }
                 R.id.speedSeekbar -> {
@@ -399,23 +391,23 @@ class MainActivity : AppCompatActivity(), IPlayListener, SeekBar.OnSeekBarChange
                 }
 
                 R.id.fit -> {
-                    aspectRatioFrameLayout.resizeMode = RESIZE_MODE_FIT
+                    aspectFrameLayout.resizeMode = RESIZE_MODE_FIT
                     unCheck(mutableListOf(fit_width, fit_height, fill, zoom))
                 }
                 R.id.fit_width -> {
-                    aspectRatioFrameLayout.resizeMode = RESIZE_MODE_FIXED_WIDTH
+                    aspectFrameLayout.resizeMode = RESIZE_MODE_FIXED_WIDTH
                     unCheck(mutableListOf(fit, fit_height, fill, zoom))
                 }
                 R.id.fit_height -> {
-                    aspectRatioFrameLayout.resizeMode = RESIZE_MODE_FIXED_HEIGHT
+                    aspectFrameLayout.resizeMode = RESIZE_MODE_FIXED_HEIGHT
                     unCheck(mutableListOf(fit_width, fit, fill, zoom))
                 }
                 R.id.fill -> {
-                    aspectRatioFrameLayout.resizeMode = RESIZE_MODE_FILL
+                    aspectFrameLayout.resizeMode = RESIZE_MODE_FILL
                     unCheck(mutableListOf(fit_width, fit_height, fit, zoom))
                 }
                 R.id.zoom -> {
-                    aspectRatioFrameLayout.resizeMode = RESIZE_MODE_ZOOM
+                    aspectFrameLayout.resizeMode = RESIZE_MODE_ZOOM
                     unCheck(mutableListOf(fit_width, fit_height, fill, fit))
                 }
 

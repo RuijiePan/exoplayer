@@ -23,10 +23,10 @@ class FilterAdapter(context: Context?, data: MutableList<FilterInfo>?) :
     private val mainHanlder = Handler(Looper.getMainLooper())
 
     override fun convert(holder: BaseViewHolder?, item: FilterInfo?, position: Int) {
-        holder?.setText(R.id.filterName, item?.name)
+        holder?.setText(R.id.filterName, item?.filterName)
         val text = holder?.getView<TextView>(R.id.filterName)
         if(item?.check?: false) {
-            text?.setTextColor(Color.GREEN)
+            text?.setTextColor(Color.RED)
         } else {
             text?.setTextColor(Color.BLACK)
         }

@@ -3,7 +3,7 @@ package com.panruijie.exoplayer.filter
 /**
  * Created by panruijie on 2019/1/30.
  **/
-enum class FilterInfo(name : String, var check : Boolean = false) {
+enum class FilterInfo(val filterName : String, var check : Boolean = false) {
 
     FILTER_ORIGINAL("original", true),
     FILTER_SOLARIZE("solarize"),
