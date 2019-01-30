@@ -29,6 +29,7 @@ import com.panruijie.exoplayer.R
 import com.panruijie.exoplayer.base.adapter.BaseLinearLayoutManager
 import com.panruijie.exoplayer.cache.DataSourceFactoryProvider
 import com.panruijie.exoplayer.filter.FilterAdapter
+import com.panruijie.exoplayer.filter.FilterHelper
 import com.panruijie.exoplayer.filter.FilterInfo
 import com.panruijie.exoplayer.gpuimage.GoGpuImage
 import com.panruijie.exoplayer.gpuimage.IRenderCallback
@@ -106,17 +107,20 @@ class MainActivity : AppCompatActivity(), IPlayListener, SeekBar.OnSeekBarChange
 
         val filterAdapter = FilterAdapter(this, FilterInfo.values().toMutableList())
         recyclerview.setItemAnimator(DefaultItemAnimator())
-        val layoutManager = BaseLinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
+        val layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
         recyclerview.setLayoutManager(layoutManager)
         recyclerview.setHasFixedSize(true)
         recyclerview.setAdapter(filterAdapter)
         filterAdapter.listener = object : FilterAdapter.IFilterChooseListener {
-            override fun filterChoose(filter: GPUImageFilter) {
+            override fun filterChoose(id: Int) {
                 if(filterGroup.filters.size > 1) {
                     filterGroup.filters.removeAt(1)
                 }
-                filterGroup.addFilter(filter)
-                gpuImage.setFilter(filterGroup)
+                val filter = FilterHelper.createFilterFromId(id)
+                if(filter != null) {
+                    filterGroup.addFilter(filter)
+                    gpuImage.setFilter(filterGroup)
+                }
             }
         }
     }

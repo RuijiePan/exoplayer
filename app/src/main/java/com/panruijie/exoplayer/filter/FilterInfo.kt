@@ -5,6 +5,7 @@ package com.panruijie.exoplayer.filter
  **/
 enum class FilterInfo(name : String, var check : Boolean = false) {
 
+    FILTER_ORIGINAL("original"),
     FILTER_SOLARIZE("solarize"),
     FILTER_VIGNETTE("vignette"),
     FILTER_WEAK_PIXEL( "weakPixel"),

@@ -24,60 +24,27 @@ class FilterAdapter(context: Context?, data: MutableList<FilterInfo>?) :
         holder?.setText(R.id.filterName, item?.name)
         checkBox?.setOnCheckedChangeListener {
             _, ischeck ->
+            item?.check = ischeck
             if (ischeck) {
-                item?.check = true
                 mData.forEachIndexed { index, filterInfo ->
                     if (index != position) {
                         filterInfo.check = false
                     }
                 }
-                listener?.filterChoose(createFilterFromId(position))
-                notifyItemChanged(position)
                 if (lastIndex != -1) {
                     notifyItemChanged(lastIndex)
                 }
                 lastIndex = position
+                listener?.filterChoose(holder.adapterPosition)
+            } else {
+                listener?.filterChoose(0)
             }
         }
     }
 
     interface IFilterChooseListener {
 
-        fun filterChoose(filter : GPUImageFilter)
+        fun filterChoose(id: Int)
     }
 
-    private fun createFilterFromId(id : Int) : GPUImageFilter {
-        when(id) {
-            FilterInfo.FILTER_CONVOLUTION.ordinal -> {
-                return GPUImage3x3ConvolutionFilter()
-            }
-            FilterInfo.FILTER_ADD_BLEND.ordinal -> {
-                return GPUImageAddBlendFilter()
-            }
-            FilterInfo.FILTER_ALPHA_BLEND.ordinal -> {
-                return GPUImageAlphaBlendFilter()
-            }
-            FilterInfo.FILTER_BOX_BLUR.ordinal -> {
-                return GPUImageBoxBlurFilter()
-            }
-            FilterInfo.FILTER_BRIGHTNESS.ordinal -> {
-                return GPUImageBrightnessFilter()
-            }
-            FilterInfo.FILTER_FALSE_COLOR.ordinal -> {
-                return GPUImageFalseColorFilter()
-            }
-            FilterInfo.FILTER_SOLARIZE.ordinal -> {
-                return GPUImageSolarizeFilter()
-            }
-            FilterInfo.FILTER_VIGNETTE.ordinal -> {
-                return GPUImageVignetteFilter()
-            }
-            FilterInfo.FILTER_WEAK_PIXEL.ordinal -> {
-                return GPUImageWeakPixelInclusionFilter()
-            }
-            else -> {
-                throw IllegalArgumentException("Not filter found!")
-            }
-        }
-    }
 }
