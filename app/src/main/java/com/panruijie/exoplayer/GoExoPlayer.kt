@@ -117,7 +117,6 @@ class GoExoPlayer(private val context: Context) : IExoPlayer, AnalyticsListener 
             Log.w(TAG, "Unable to acquire WAKE_LOCK due to missing manifest permission")
         }
         stayAwake(false)
-
         bufferRepeater.repeaterDelay = BUFFER_REPEAT_DELAY
         bufferRepeater.setRepeatListener(object : Repeater.RepeatListener {
             override fun onRepeat() {
@@ -153,7 +152,7 @@ class GoExoPlayer(private val context: Context) : IExoPlayer, AnalyticsListener 
         }
 
         if (awake && !wakeLock.isHeld) {
-            wakeLock.acquire(WAKE_LOCK_TIMEOUT.toLong())
+            wakeLock.acquire(WAKE_LOCK_TIMEOUT)
         } else if (!awake && wakeLock.isHeld) {
             wakeLock.release()
         }
@@ -288,35 +287,38 @@ class GoExoPlayer(private val context: Context) : IExoPlayer, AnalyticsListener 
     }
 
     override fun removeMediaInfo(index: Int) {
-        mediaInfoList.removeAt(index)
-        isLoadingSource = true
-        playListenerList.forEach {
-            it.onLoadingSource(loadingStatue = IPlayListener.LoadingStatue.START)
-        }
-        if (exoPlayer != null) {
-            concatenatedSource.removeMediaSource(index) {
-                isLoadingSource = false
-                playListenerList.forEach {
-                    it.onLoadingSource(loadingStatue = IPlayListener.LoadingStatue.FINISH)
+        mainHanlder.post {
+            mediaInfoList.removeAt(index)
+            isLoadingSource = true
+            playListenerList.forEach {
+                it.onLoadingSource(loadingStatue = IPlayListener.LoadingStatue.START)
+            }
+            if (exoPlayer != null) {
+                concatenatedSource.removeMediaSource(index) {
+                    isLoadingSource = false
+                    playListenerList.forEach {
+                        it.onLoadingSource(loadingStatue = IPlayListener.LoadingStatue.FINISH)
+                    }
                 }
             }
         }
-
     }
 
     override fun addMediaInfo(index: Int, mediaInfo: MediaInfo) {
-        mediaInfoList.add(index, mediaInfo)
-        isLoadingSource = true
-        playListenerList.forEach {
-            it.onLoadingSource(loadingStatue = IPlayListener.LoadingStatue.START)
-        }
-        if (exoPlayer != null) {
-            concatenatedSource.addMediaSource(index, buildMediaSource(info = mediaInfo), {
-                isLoadingSource = false
-                playListenerList.forEach {
-                    it.onLoadingSource(loadingStatue = IPlayListener.LoadingStatue.FINISH)
-                }
-            })
+        mainHanlder.post {
+            mediaInfoList.add(index, mediaInfo)
+            isLoadingSource = true
+            playListenerList.forEach {
+                it.onLoadingSource(loadingStatue = IPlayListener.LoadingStatue.START)
+            }
+            if (exoPlayer != null) {
+                concatenatedSource.addMediaSource(index, buildMediaSource(info = mediaInfo), {
+                    isLoadingSource = false
+                    playListenerList.forEach {
+                        it.onLoadingSource(loadingStatue = IPlayListener.LoadingStatue.FINISH)
+                    }
+                })
+            }
         }
     }
 

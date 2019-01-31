@@ -22,7 +22,7 @@ object DataSourceFactoryProvider {
 
     val CACHE_DIR = null
     val CACHE_NAME = "exoplayer"
-    val CACHE_SIZE = 100 * 1024 * 1024L
+    val CACHE_SIZE = (2 shl 30).toLong()   //1024 * 1024 * 1024 = 1GB  (2 shl 30).toLong()
 
     interface DataSourceFactoryProvider {
         fun create(context: Context, userAgent: String, listener: TransferListener?): DataSource.Factory

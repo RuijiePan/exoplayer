@@ -24,7 +24,6 @@ import com.google.android.exoplayer2.Timeline
 import com.google.android.exoplayer2.analytics.AnalyticsListener
 import com.google.android.exoplayer2.ui.AspectRatioFrameLayout
 import com.google.android.exoplayer2.ui.AspectRatioFrameLayout.*
-
 import com.panruijie.exoplayer.R
 import com.panruijie.exoplayer.base.adapter.BaseLinearLayoutManager
 import com.panruijie.exoplayer.cache.DataSourceFactoryProvider
@@ -47,12 +46,14 @@ class MainActivity : AppCompatActivity(), IPlayListener, SeekBar.OnSeekBarChange
         private val PERMISSIONS_STORAGE =
             arrayOf("android.permission.READ_EXTERNAL_STORAGE", "android.permission.WRITE_EXTERNAL_STORAGE")
 
+        //Smooth Streaming
         private val SS = ""
         //https://storage.googleapis.com/wvmedia/clear/h264/tears/tears.mpd
+        //将视频内容分割为一个个分片，每个分片可以存在不同的编码形式（不同的codec、profile、分辨率、码率等）；
         private val DASH = "https://content.uplynk.com/channel/3c367669a83b4cdab20cceefac253684.mpd?ad=cleardashnew"
-        //直播
+        //Http Live Streaming 是由Apple公司定义的用于实时流传输的协议，HLS基于HTTP协议实现，传输内容包括两部分，一是M3U8描述文件，二是TS媒体文件
         private val HLS = "http://devimages.apple.com/iphone/samples/bipbop/bipbopall.m3u8"
-        //网络MP4
+        //网络MP4等普通格式
         private val OTHER = "http://clips.vorwaerts-gmbh.de/big_buck_bunny.mp4"
     }
 
