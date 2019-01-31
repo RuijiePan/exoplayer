@@ -46,8 +46,10 @@ class MainActivity : AppCompatActivity(), IPlayListener, SeekBar.OnSeekBarChange
         private val PERMISSIONS_STORAGE =
             arrayOf("android.permission.READ_EXTERNAL_STORAGE", "android.permission.WRITE_EXTERNAL_STORAGE")
 
+        //test url : http://playready.azurewebsites.net/Home/AdaptiveTests
+
         //Smooth Streaming
-        private val SS = ""
+        private val SS = "http://amssamples.streaming.mediaservices.windows.net/683f7e47-bd83-4427-b0a3-26a6c4547782/BigBuckBunny.ism/manifest"
         //https://storage.googleapis.com/wvmedia/clear/h264/tears/tears.mpd
         //将视频内容分割为一个个分片，每个分片可以存在不同的编码形式（不同的codec、profile、分辨率、码率等）；
         private val DASH = "https://content.uplynk.com/channel/3c367669a83b4cdab20cceefac253684.mpd?ad=cleardashnew"
@@ -362,12 +364,12 @@ class MainActivity : AppCompatActivity(), IPlayListener, SeekBar.OnSeekBarChange
         if (isChecked) {
             when (buttonView?.id) {
                 R.id.typeSS -> {
-                    Toast.makeText(this, "not support now!", Toast.LENGTH_SHORT).show()
-                    /*unCheck(mutableListOf(typeDASH, typeHLS, typeOTHER))
+                    //Toast.makeText(this, "not support now!", Toast.LENGTH_SHORT).show()
+                    unCheck(mutableListOf(typeDASH, typeHLS, typeOTHER))
                     goExoPlayer.releasePlayer()
                     goExoPlayer.setMediaInfo(SS)
                     goExoPlayer.initPlayer()
-                    path.text = SS*/
+                    path.text = SS
                 }
                 R.id.typeDASH -> {
                     unCheck(mutableListOf(typeSS, typeHLS, typeOTHER))
