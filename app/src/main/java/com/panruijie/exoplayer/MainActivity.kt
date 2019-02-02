@@ -7,14 +7,10 @@ import android.os.Build
 import android.support.v4.app.ActivityCompat
 import android.support.v7.app.AppCompatActivity
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
-import android.support.v7.widget.AppCompatSeekBar
 import android.support.v7.widget.DefaultItemAnimator
 import android.support.v7.widget.LinearLayoutManager
 import android.util.Log
 import android.view.Surface
-import android.view.TextureView
 import android.view.View
 import android.widget.*
 
@@ -22,19 +18,15 @@ import com.panruijie.exoplayer.base.IPlayListener
 import com.panruijie.exoplayer.source.GLDisPlay
 import com.google.android.exoplayer2.Timeline
 import com.google.android.exoplayer2.analytics.AnalyticsListener
-import com.google.android.exoplayer2.ui.AspectRatioFrameLayout
 import com.google.android.exoplayer2.ui.AspectRatioFrameLayout.*
-import com.panruijie.exoplayer.R
-import com.panruijie.exoplayer.base.adapter.BaseLinearLayoutManager
 import com.panruijie.exoplayer.cache.DataSourceFactoryProvider
+import com.panruijie.exoplayer.core.GoExoPlayer
 import com.panruijie.exoplayer.filter.FilterAdapter
 import com.panruijie.exoplayer.filter.FilterHelper
 import com.panruijie.exoplayer.filter.FilterInfo
 import com.panruijie.exoplayer.gpuimage.GoGpuImage
 import com.panruijie.exoplayer.gpuimage.IRenderCallback
 import com.panruijie.exoplayer.gpuimage.filter.GPUImageOESFilter
-import jp.co.cyberagent.android.gpuimage.filter.GPUImageBoxBlurFilter
-import jp.co.cyberagent.android.gpuimage.filter.GPUImageFilter
 import jp.co.cyberagent.android.gpuimage.filter.GPUImageFilterGroup
 import jp.co.cyberagent.android.gpuimage.util.Rotation
 import kotlinx.android.synthetic.main.activity_main.*
@@ -302,7 +294,7 @@ class MainActivity : AppCompatActivity(), IPlayListener, SeekBar.OnSeekBarChange
     }
 
     override fun onPlayError(eventTime: AnalyticsListener.EventTime?, reason: String) {
-
+        Log.w(GoExoPlayer.TAG, "error = " + reason)
     }
 
     override fun onLoopingEnd(eventTime: AnalyticsListener.EventTime?) {

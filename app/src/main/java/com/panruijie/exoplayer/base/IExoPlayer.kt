@@ -1,6 +1,8 @@
 package com.panruijie.exoplayer.base
 
+import com.google.android.exoplayer2.source.TrackGroupArray
 import com.google.android.exoplayer2.upstream.DataSource
+import com.panruijie.exoplayer.core.renderer.RendererType
 import com.panruijie.exoplayer.source.MediaInfo
 
 /**
@@ -63,6 +65,17 @@ interface IExoPlayer : IPlayer {
      * 第一帧刷出来的时候跑的任务
      */
     fun runOnRenderFirstFrame(runnable: Runnable)
+
+    /**
+     * 当前可用的track
+     */
+    fun getAvailableTracks() : Map<RendererType, TrackGroupArray>?
+
+    fun setRendererEnabled(type: RendererType, enabled: Boolean)
+
+    fun isRendererEnabled(type: RendererType): Boolean
+
+    fun clearSelectedTracks(type: RendererType)
 
     /**
      * 生命周期回调

@@ -1,6 +1,9 @@
-package com.panruijie.exoplayer
+package com.panruijie.exoplayer.core
 
 import android.Manifest
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.content.Context
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -8,8 +11,11 @@ import android.os.Handler
 import android.os.Looper
 import android.os.PowerManager
 import android.os.PowerManager.SCREEN_BRIGHT_WAKE_LOCK
+import android.support.v4.app.NotificationCompat
+import android.support.v4.util.ArrayMap
 import android.util.Log
 import android.view.Surface
+import android.view.View
 import com.panruijie.exoplayer.base.IExoPlayer
 import com.panruijie.exoplayer.base.IMediaDisplay
 import com.panruijie.exoplayer.base.IPlayListener
@@ -27,8 +33,14 @@ import com.google.android.exoplayer2.source.smoothstreaming.DefaultSsChunkSource
 import com.google.android.exoplayer2.source.smoothstreaming.SsMediaSource
 import com.google.android.exoplayer2.trackselection.AdaptiveTrackSelection
 import com.google.android.exoplayer2.trackselection.DefaultTrackSelector
+import com.google.android.exoplayer2.trackselection.MappingTrackSelector
+import com.google.android.exoplayer2.trackselection.TrackSelectionArray
+import com.google.android.exoplayer2.ui.PlayerNotificationManager
 import com.google.android.exoplayer2.util.Util
 import com.panruijie.exoplayer.cache.DataSourceFactoryProvider
+import com.panruijie.exoplayer.core.notification.DescriptionAdapter
+import com.panruijie.exoplayer.core.renderer.ExoPlayerRendererTracksInfo
+import com.panruijie.exoplayer.core.renderer.RendererType
 import java.util.ArrayList
 import java.util.concurrent.CopyOnWriteArrayList
 import com.panruijie.exoplayer.util.StateStore
@@ -72,7 +84,7 @@ class GoExoPlayer(private val context: Context) : IExoPlayer, AnalyticsListener 
     /**
      * 需要下次seekto的位置
      */
-    private var pendSeekPos = IDLE_SEEK_POS
+    private var pendSeekPos = C.POSITION_UNSET.toLong()
 
     private var initPlayer = false
     private var volume: Float = 1F
@@ -86,7 +98,9 @@ class GoExoPlayer(private val context: Context) : IExoPlayer, AnalyticsListener 
     var buildClipSource = true
     private var exoPlayer: SimpleExoPlayer? = null
     private var playbackParameters: PlaybackParameters = PlaybackParameters.DEFAULT
+    private lateinit var trackSelector : DefaultTrackSelector
     private lateinit var display: IMediaDisplay
+    private lateinit var playNotificationManager : PlayerNotificationManager
     /**
      * 可以动态增加，删除的mediasource
      */
@@ -102,7 +116,6 @@ class GoExoPlayer(private val context: Context) : IExoPlayer, AnalyticsListener 
         val BUFFER_REPEAT_DELAY = 1000
 
         val PLAY_REPEATER_TIME = 1000
-        val IDLE_SEEK_POS = -1L
         val ANDROID_M = 23
     }
 
@@ -219,7 +232,7 @@ class GoExoPlayer(private val context: Context) : IExoPlayer, AnalyticsListener 
         initPlayer = true
         mainHanlder.post {
             val adaptiveTrackSelectionFactory = AdaptiveTrackSelection.Factory()
-            val trackSelector = DefaultTrackSelector(adaptiveTrackSelectionFactory)
+            trackSelector = DefaultTrackSelector(adaptiveTrackSelectionFactory)
             val renderersFactory = DefaultRenderersFactory(context)
             exoPlayer = ExoPlayerFactory.newSimpleInstance(context, renderersFactory, trackSelector)
             exoPlayer?.addAnalyticsListener(this)
@@ -247,6 +260,17 @@ class GoExoPlayer(private val context: Context) : IExoPlayer, AnalyticsListener 
             } else {
                 concatenatedSource.addMediaSources(buildMediaSource(mediaInfoList))
             }
+            playNotificationManager = PlayerNotificationManager(context, "10086", 0, DescriptionAdapter())
+            playNotificationManager.setNotificationListener(object : PlayerNotificationManager.NotificationListener {
+                override fun onNotificationCancelled(notificationId: Int) {
+                    TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+                }
+
+                override fun onNotificationStarted(notificationId: Int, notification: Notification?) {
+                    TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+                }
+
+            })
 
             exoPlayer?.prepare(concatenatedSource)
         }
@@ -270,6 +294,7 @@ class GoExoPlayer(private val context: Context) : IExoPlayer, AnalyticsListener 
             synchronized(runOnRenderFirstFrame) {
                 runOnRenderFirstFrame.clear()
             }
+            playNotificationManager.setPlayer(null)
             exoPlayer?.removeAnalyticsListener(this)
             exoPlayer?.release()
             exoPlayer = null
@@ -363,7 +388,7 @@ class GoExoPlayer(private val context: Context) : IExoPlayer, AnalyticsListener 
      */
     override fun seekTo(positionMs: Long, limitToCurrentWindow: Boolean) {
         //无效的seekto
-        if (positionMs == IDLE_SEEK_POS) {
+        if (positionMs == C.POSITION_UNSET.toLong()) {
             return
         }
         //等待刷新一帧之后再seekto
@@ -375,7 +400,7 @@ class GoExoPlayer(private val context: Context) : IExoPlayer, AnalyticsListener 
         }
         //当前位置就是想要seekto的位置，不会有回调，手动回调
         if (positionMs == getCurrentPosition(limitToCurrentWindow)) {
-            pendSeekPos = IDLE_SEEK_POS
+            pendSeekPos = C.POSITION_UNSET.toLong()
             stateStore.setMostRecentState(stateStore.isLastReportedPlayWhenReady(), StateStore.FLAG_PLAY_WHEN_READY)
             playListenerList.forEach {
                 it.onSeekComoleted(null, exoPlayer?.playWhenReady?: playWhenReady)
@@ -403,7 +428,7 @@ class GoExoPlayer(private val context: Context) : IExoPlayer, AnalyticsListener 
             if (cumulativePositionMs < positionMs && positionMs <= cumulativePositionMs + windowDurationMs) {
                 exoPlayer?.seekTo(index, positionMs - cumulativePositionMs)
                 stateStore.setMostRecentState(stateStore.isLastReportedPlayWhenReady(), StateStore.STATE_SEEKING)
-                pendSeekPos = IDLE_SEEK_POS
+                pendSeekPos = C.POSITION_UNSET.toLong()
                 return
             }
 
@@ -653,7 +678,7 @@ class GoExoPlayer(private val context: Context) : IExoPlayer, AnalyticsListener 
                     it.onSeekComoleted(eventTime, playWhenReady)
                 }
                 //继续下次seekto
-                if (pendSeekPos != IDLE_SEEK_POS) {
+                if (pendSeekPos != C.POSITION_UNSET.toLong()) {
                     seekTo(pendSeekPos)
                 }
             }
@@ -758,6 +783,157 @@ class GoExoPlayer(private val context: Context) : IExoPlayer, AnalyticsListener 
         super.onLoadError(eventTime, loadEventInfo, mediaLoadData, error, wasCanceled)
         Log.w(TAG, "onLoadError: wasCacneled = ${wasCanceled}, error = ${error?.message.toString()}" )
         error?.printStackTrace()
+    }
+
+    override fun getAvailableTracks() : Map<RendererType, TrackGroupArray>? {
+        if (exoPlayer?.playbackState == Player.STATE_IDLE) {
+            return null
+        }
+        // Retrieves the available tracks
+        val trackMap = ArrayMap<RendererType, TrackGroupArray>()
+        val mappedTrackInfo = trackSelector.currentMappedTrackInfo ?: return trackMap
+
+        // Maps the available tracks
+        val types = arrayOf(RendererType.AUDIO, RendererType.VIDEO, RendererType.CLOSED_CAPTION, RendererType.METADATA)
+        for (type in types) {
+            val trackGroups = ArrayList<TrackGroup>()
+            // collect track groups from all the track renderers of the same type
+            for (exoPlayerTrackIndex in getExoPlayerTracksInfo(type, 0, mappedTrackInfo).rendererTrackIndexes) {
+                val trackGroupArray = mappedTrackInfo.getTrackGroups(exoPlayerTrackIndex)
+                for (i in 0 until trackGroupArray.length) {
+                    trackGroups.add(trackGroupArray.get(i))
+                }
+            }
+            if (!trackGroups.isEmpty()) {
+                // construct fake track group array for track groups from all the renderers of the same type
+                trackMap[type] = TrackGroupArray(*trackGroups.toTypedArray())
+            }
+        }
+
+        return trackMap
+
+    }
+
+    private fun getExoPlayerTracksInfo(
+        type: RendererType,
+        groupIndex: Int,
+        mappedTrackInfo: MappingTrackSelector.MappedTrackInfo?
+    ): ExoPlayerRendererTracksInfo {
+        // holder for the all exo player renderer track indexes of the specified renderer type
+        val exoPlayerRendererTrackIndexes = ArrayList<Int>()
+        // the exoplayer renderer track index related to the specified group index
+        var exoPlayerRendererTrackIndex = C.INDEX_UNSET
+        // the corrected exoplayer group index
+        var exoPlayerRendererTrackGroupIndex = C.INDEX_UNSET
+        var skippedRenderersGroupsCount = 0
+        if (mappedTrackInfo != null) {
+            for (rendererIndex in 0 until mappedTrackInfo.rendererCount) {
+                val exoPlayerRendererType = mappedTrackInfo.getRendererType(rendererIndex)
+                if (type == getExoMediaRendererType(exoPlayerRendererType)) {
+                    exoPlayerRendererTrackIndexes.add(rendererIndex)
+                    val trackGroups = mappedTrackInfo.getTrackGroups(rendererIndex)
+                    if (skippedRenderersGroupsCount + trackGroups.length > groupIndex) {
+                        if (exoPlayerRendererTrackIndex == C.INDEX_UNSET) {
+                            // if the groupIndex belongs to the current exo player renderer
+                            exoPlayerRendererTrackIndex = rendererIndex
+                            exoPlayerRendererTrackGroupIndex = groupIndex - skippedRenderersGroupsCount
+                        }
+                    } else {
+                        skippedRenderersGroupsCount += trackGroups.length
+                    }
+                }
+            }
+        }
+        return ExoPlayerRendererTracksInfo(
+            exoPlayerRendererTrackIndexes,
+            exoPlayerRendererTrackIndex,
+            exoPlayerRendererTrackGroupIndex
+        )
+    }
+
+    private fun getExoMediaRendererType(exoPlayerTrackType: Int): RendererType? {
+        when (exoPlayerTrackType) {
+            C.TRACK_TYPE_AUDIO -> return RendererType.AUDIO
+            C.TRACK_TYPE_VIDEO -> return RendererType.VIDEO
+            C.TRACK_TYPE_TEXT -> return RendererType.CLOSED_CAPTION
+            C.TRACK_TYPE_METADATA -> return RendererType.METADATA
+            else -> return null
+        }
+    }
+
+    /**
+     * Clear all selected tracks for the specified renderer and re-enable all renderers so the player can select the default track.
+     *
+     * @param type The renderer type
+     */
+    override fun clearSelectedTracks(type: RendererType) {
+        // Retrieves the available tracks
+        val mappedTrackInfo = trackSelector.currentMappedTrackInfo
+        val tracksInfo = getExoPlayerTracksInfo(type, 0, mappedTrackInfo)
+        val parametersBuilder = trackSelector.buildUponParameters()
+
+        for (rendererTrackIndex in tracksInfo.rendererTrackIndexes) {
+            // Reset all renderers re-enabling so the player can select the streams default track.
+            parametersBuilder.setRendererDisabled(rendererTrackIndex, false)
+                .clearSelectionOverrides(rendererTrackIndex)
+        }
+        trackSelector.setParameters(parametersBuilder)
+    }
+
+
+    override fun setRendererEnabled(type: RendererType, enabled: Boolean) {
+        val mappedTrackInfo = trackSelector.currentMappedTrackInfo
+        val tracksInfo = getExoPlayerTracksInfo(type, 0, mappedTrackInfo)
+        if (!tracksInfo.rendererTrackIndexes.isEmpty()) {
+            var enabledSomething = false
+            val parametersBuilder = trackSelector.buildUponParameters()
+            for (rendererTrackIndex in tracksInfo.rendererTrackIndexes) {
+                if (enabled) {
+                    val selectionOverride = trackSelector.parameters.getSelectionOverride(
+                        rendererTrackIndex,
+                        mappedTrackInfo!!.getTrackGroups(rendererTrackIndex)
+                    )
+                    // check whether the renderer has been selected before
+                    // other renderers should be kept disabled to avoid playback errors
+                    if (selectionOverride != null) {
+                        parametersBuilder.setRendererDisabled(rendererTrackIndex, false)
+                        enabledSomething = true
+                    }
+                } else {
+                    parametersBuilder.setRendererDisabled(rendererTrackIndex, true)
+                }
+            }
+            if (enabled && !enabledSomething) {
+                // if nothing has been enabled enable the first sequential renderer
+                parametersBuilder.setRendererDisabled(tracksInfo.rendererTrackIndexes[0], false)
+            }
+            trackSelector.setParameters(parametersBuilder)
+        }
+    }
+
+    /**
+     * Return true if at least one renderer for the given type is enabled
+     * @param type The renderer type
+     * @return true if at least one renderer for the given type is enabled
+     */
+    override fun isRendererEnabled(type: RendererType): Boolean {
+        val mappedTrackInfo = trackSelector.currentMappedTrackInfo
+        val tracksInfo = getExoPlayerTracksInfo(type, 0, mappedTrackInfo)
+        val parameters = trackSelector.parameters
+        for (rendererTrackIndex in tracksInfo.rendererTrackIndexes) {
+            if (!parameters.getRendererDisabled(rendererTrackIndex)) {
+                return true
+            }
+        }
+        return false
+    }
+
+    override fun onTracksChanged(
+        eventTime: AnalyticsListener.EventTime?,
+        trackGroups: TrackGroupArray?,
+        trackSelections: TrackSelectionArray?
+    ) {
+        super.onTracksChanged(eventTime, trackGroups, trackSelections)
     }
 }
 
